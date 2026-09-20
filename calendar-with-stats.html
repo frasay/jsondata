@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Availability Planner with Stats</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+
+        .calendar-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .stats-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .stat-card h3 {
+            margin-bottom: 12px;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #666;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #999;
+            margin-top: 8px;
+        }
+
+        .traffic-light {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            align-items: center;
+        }
+
+        .traffic-light-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .light-green { background-color: #81bb01; }
+        .light-orange { background-color: #da7601; }
+        .light-red { background-color: #e74c3c; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        td {
+            height: 40px;
+        }
+
+        .name-cell {
+            text-align: left;
+            font-weight: 500;
+            background-color: #fafafa;
+        }
+
+        .cell-no {
+            background-color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid #e0e0e0;
+        }
+
+        .cell-no:hover {
+            background-color: #f5f5f5;
+            border-color: #999;
+        }
+
+        .cell-yes {
+            background-color: #81bb01;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border: 2px solid #6a9b00;
+        }
+
+        .cell-yes:hover {
+            background-color: #6a9b00;
+        }
+
+        .cell-maybe {
+            background-color: #da7601;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border: 2px solid #b85c00;
+        }
+
+        .cell-maybe:hover {
+            background-color: #b85c00;
+        }
+
+        .date-header-cell {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .date-stat {
+            font-size: 11px;
+            color: #999;
+            margin-top: 3px;
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .error {
+            background-color: #e74c3c;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .availability-breakdown {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            font-size: 12px;
+        }
+
+        .availability-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .availability-item span {
+            font-weight: 600;
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .calendar-section {
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>📅 Team Availability Planner</h1>
+        <p class="subtitle">Real-time stats from JSON data</p>
+
+        <div id="loadingMessage" class="loading">Loading data from GitHub...</div>
+        <div id="errorMessage"></div>
+
+        <div id="mainContent" style="display: none;">
+            <div class="main-content">
+                <!-- Calendar -->
+                <div class="calendar-section">
+                    <table id="calendarTable">
+                        <!-- Table will be generated by JavaScript -->
+                    </table>
+                </div>
+
+                <!-- Stats Sidebar -->
+                <div class="stats-section">
+                    <div class="stat-card">
+                        <h3>Total Players</h3>
+                        <div class="stat-value" id="totalPlayers">0</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <h3>Best Date</h3>
+                        <div class="stat-value" id="bestDate">—</div>
+                        <div class="stat-label" id="bestDateCount">0 available</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <h3>Worst Date</h3>
+                        <div class="stat-value" id="worstDate">—</div>
+                        <div class="stat-label" id="worstDateCount">0 available</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <h3>Overall Health</h3>
+                        <div class="traffic-light">
+                            <div class="traffic-light-dot light-green" id="healthGreen">0</div>
+                            <div class="traffic-light-dot light-orange" id="healthOrange">0</div>
+                            <div class="traffic-light-dot light-red" id="healthRed">0</div>
+                        </div>
+                        <div class="stat-label" style="margin-top: 12px;">% Yes / Maybe / No</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <h3>Most Available</h3>
+                        <div id="mostAvailable">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadDataFromGitHub() {
+            try {
+                const url = 'https://raw.githubusercontent.com/frasay/jsondata/main/sample-availability-data.json';
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch data');
+                }
+                
+                const data = await response.json();
+                initializeApp(data);
+            } catch (error) {
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('errorMessage').innerHTML = `<div class="error">Error loading data: ${error.message}</div>`;
+            }
+        }
+
+        let appData = {};
+
+        function initializeApp(jsonData) {
+            appData = jsonData;
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            renderCalendar();
+            updateStats();
+        }
+
+        function renderCalendar() {
+            const table = document.getElementById('calendarTable');
+            let html = '<tr><th>Player</th>';
+            
+            appData.dates.forEach(date => {
+                const stats = getDateStats(date.id);
+                html += `<th class="date-header-cell">${date.label}<span class="date-stat">${stats.yes}/${stats.maybe}/${stats.no}</span></th>`;
+            });
+            html += '</tr>';
+
+            appData.players.forEach(player => {
+                html += `<tr><td class="name-cell">${player}</td>`;
+                appData.dates.forEach(date => {
+                    let state = appData.availability[player][date.id];
+                    let cellClass = `cell-${state}`;
+                    let cellText = state === 'yes' ? '✓' : (state === 'maybe' ? '?' : '');
+                    html += `<td class="${cellClass}" onclick="toggleCell('${player}', '${date.id}')">${cellText}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            table.innerHTML = html;
+        }
+
+        function getDateStats(dateId) {
+            let yes = 0, maybe = 0, no = 0;
+            appData.players.forEach(player => {
+                const state = appData.availability[player][dateId];
+                if (state === 'yes') yes++;
+                else if (state === 'maybe') maybe++;
+                else no++;
+            });
+            return { yes, maybe, no };
+        }
+
+        function getPlayerStats(playerName) {
+            let yes = 0, maybe = 0, no = 0;
+            appData.dates.forEach(date => {
+                const state = appData.availability[playerName][date.id];
+                if (state === 'yes') yes++;
+                else if (state === 'maybe') maybe++;
+                else no++;
+            });
+            return { yes, maybe, no };
+        }
+
+        function updateStats() {
+            document.getElementById('totalPlayers').textContent = appData.players.length;
+
+            let bestDate = null, worstDate = null;
+            let bestCount = -1, worstCount = Infinity;
+
+            appData.dates.forEach(date => {
+                const stats = getDateStats(date.id);
+                if (stats.yes > bestCount) {
+                    bestCount = stats.yes;
+                    bestDate = date;
+                }
+                if (stats.yes < worstCount) {
+                    worstCount = stats.yes;
+                    worstDate = date;
+                }
+            });
+
+            if (bestDate) {
+                document.getElementById('bestDate').textContent = bestDate.label.split(' ')[0];
+                document.getElementById('bestDateCount').textContent = `${bestCount} available`;
+            }
+            if (worstDate) {
+                document.getElementById('worstDate').textContent = worstDate.label.split(' ')[0];
+                document.getElementById('worstDateCount').textContent = `${worstCount} available`;
+            }
+
+            let totalYes = 0, totalMaybe = 0, totalNo = 0;
+            appData.players.forEach(player => {
+                appData.dates.forEach(date => {
+                    const state = appData.availability[player][date.id];
+                    if (state === 'yes') totalYes++;
+                    else if (state === 'maybe') totalMaybe++;
+                    else totalNo++;
+                });
+            });
+
+            const total = totalYes + totalMaybe + totalNo;
+            const percentYes = Math.round((totalYes / total) * 100);
+            const percentMaybe = Math.round((totalMaybe / total) * 100);
+            const percentNo = Math.round((totalNo / total) * 100);
+
+            document.getElementById('healthGreen').textContent = percentYes + '%';
+            document.getElementById('healthOrange').textContent = percentMaybe + '%';
+            document.getElementById('healthRed').textContent = percentNo + '%';
+
+            let mostAvailableName = '';
+            let mostAvailableCount = -1;
+            appData.players.forEach(player => {
+                const stats = getPlayerStats(player);
+                if (stats.yes > mostAvailableCount) {
+                    mostAvailableCount = stats.yes;
+                    mostAvailableName = player;
+                }
+            });
+
+            document.getElementById('mostAvailable').innerHTML = 
+                `<strong>${mostAvailableName}</strong><div class="stat-label">${mostAvailableCount} dates</div>`;
+        }
+
+        function toggleCell(playerName, dateId) {
+            let currentState = appData.availability[playerName][dateId];
+            let nextState = currentState === 'no' ? 'yes' : (currentState === 'yes' ? 'maybe' : 'no');
+            appData.availability[playerName][dateId] = nextState;
+            renderCalendar();
+            updateStats();
+        }
+
+        loadDataFromGitHub();
+    </script>
+
+</body>
+</html>
